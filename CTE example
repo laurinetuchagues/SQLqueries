@@ -1,0 +1,52 @@
+# The query uses CTE to retrieve the count of Top 5 customers living in each country and the amount paid by them
+
+<pre>
+
+WITH cte_top_5(custid,fname,amt)									
+AS									
+									
+(									
+      --the top 5 customers from the top 10 cities who’ve paid the highest total amounts to Rockbuster.									
+    	SELECT custr.CUSTOMER_ID,custr.FIRST_NAME,SUM(pymt.AMOUNT) AS PYMT_AMT								
+    	FROM CUSTOMER custr								
+    	LEFT JOIN PAYMENT pymt ON custr.CUSTOMER_ID = pymt.CUSTOMER_ID								
+    	LEFT JOIN ADDRESS addrs ON custr.ADDRESS_ID = addrs.ADDRESS_ID								
+    	LEFT JOIN CITY cty ON addrs.CITY_ID = cty.CITY_ID								
+    	LEFT JOIN COUNTRY cntry ON cty.COUNTRY_ID = cntry.COUNTRY_ID								
+    	WHERE cty.CITY IN								
+	    (								
+              --top 10 cities that fall within the top 10 countries you identified in step 1									
+          		SELECT cty.CITY							
+          		FROM CUSTOMER custr							
+          		LEFT JOIN ADDRESS addrs ON custr.ADDRESS_ID = addrs.ADDRESS_ID							
+          		LEFT JOIN CITY cty ON addrs.CITY_ID = cty.CITY_ID							
+          		LEFT JOIN COUNTRY cntry ON cty.COUNTRY_ID = cntry.COUNTRY_ID							
+          		WHERE cntry.COUNTRY IN							
+  		        (							
+                        --top 10 countries for Rockbuster in terms of customer numbers. 									
+                  			SELECT cntry.COUNTRY						
+                  			FROM CUSTOMER custr						
+                  			LEFT JOIN ADDRESS AS addrs ON custr.ADDRESS_ID = addrs.ADDRESS_ID						
+                  			LEFT JOIN CITY AS cty ON addrs.CITY_ID = cty.CITY_ID						
+                  			LEFT JOIN COUNTRY AS cntry ON cty.COUNTRY_ID = cntry.COUNTRY_ID						
+                  			GROUP BY cntry.COUNTRY						
+                  			ORDER BY COUNT(custr.CUSTOMER_ID) DESC						
+                  			--LIMIT 10						
+	            )							
+          		GROUP BY cntry.COUNTRY,cty.CITY							
+          		ORDER BY COUNT(custr.CUSTOMER_ID) DESC							
+	  )								
+  	GROUP BY cntry.COUNTRY, cty.CITY,custr.CUSTOMER_ID,custr.FIRST_NAME,custr.LAST_NAME								
+  	ORDER BY SUM(pymt.AMOUNT) DESC								
+) 
+
+--count of top 5 customers identified in step 1 living in each country									
+SELECT cntry.country, COUNT(DISTINCT custr.customer_id) AS customer_count, SUM(cte_top_5.amt) AS Total_revenue									
+FROM customer custr									
+LEFT JOIN address AS addrs ON custr.address_id=addrs.address_id									
+LEFT JOIN city AS cty ON addrs.city_id=cty.city_id									
+LEFT JOIN country AS cntry ON cty.country_id=cntry.country_id									
+LEFT JOIN cte_top_5 ON custr.customer_id=cte_top_5.custid									
+GROUP BY cntry.country	
+
+</pre>
